@@ -1,4 +1,5 @@
 export interface Config {
-    sep?: 'Win' | 'Unix';
     name?: string;
+    backend: "InMemory" | "IndexedDB";
+    root: string;
 }

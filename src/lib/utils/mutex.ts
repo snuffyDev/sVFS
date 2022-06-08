@@ -1,31 +1,52 @@
 import type { Nullable } from "../types/util";
+import type { Maybe } from "./array";
 
+interface MutexEntry {
+    resolve: (entry: [number, () => void]) => void;
+    reject: (error: Error) => void;
+}
 export class Mutex {
-    private mutex = Promise.resolve();
+    private _queue: MutexEntry[] = [];
+    private _currentEntry: Maybe<() => void>;
+    private _value = 1;
 
-    public acquire(): PromiseLike<() => void> {
-        let begin: (unlock: () => void) => void = unlock => { };
-
-        this.mutex = this.mutex.then(() => {
-            return new Promise(begin);
-        });
-
-        return new Promise(res => {
-            begin = res;
-        });
+    get Locked() {
+        return this._value <= 0;
     }
+    private acquire(): Promise<[number, () => void]> {
+        const locked = this.Locked;
+        const entry = new Promise<[number, () => void]>((resolve, reject) => {
+            this._queue.push({ resolve, reject });
+        });
+        if (!locked) this.dispatch();
 
-    public async dispatch<T>(fn: (() => T) | (() => PromiseLike<T>)): Promise<T> {
-        const unlock = await this.acquire();
+        return entry;
+    }
+    private dispatch(): void {
+        const entry = this._queue.shift();
+        // console.log(entry);
+        if (!entry) return;
+        let released = false;
+        this._currentEntry = () => {
+            if (released) return;
+            released = true;
+            this._value++;
+            this.dispatch();
+        };
+        entry.resolve([this._value--, this._currentEntry]);
+    }
+    public async do<T>(fn: ((value: number) => T) | ((value: number) => PromiseLike<T>)): Promise<T> {
+        const [value, unlock] = await this.acquire();
+        // console.log(unlock, this);
         try {
-            return await Promise.resolve(fn());
+            return await fn(value);
         } finally {
             unlock();
         }
     }
 }
 
-export class IDBMutex {
+export class NativeMutex {
     private _id: string | number;
     private _db: string;
     private _has: boolean;
@@ -45,8 +66,8 @@ export class IDBMutex {
             navigator.locks.request(this._db + "_lock", { ifAvailable: true }, lock => {
                 this._has = !!lock;
                 resolve(!!lock);
-                return new Promise(resolve => {
-                    this._release = resolve;
+                return new Promise<Nullable<(value?: unknown) => void>>(resolve => {
+                    this._release = resolve as Nullable<(value?: unknown) => void>;
                 });
             });
         });
@@ -57,6 +78,14 @@ export class IDBMutex {
             this._release();
         } else if (force) {
             navigator.locks.request(this._db + "_lock", { steal: true }, _ => true);
+        }
+    }
+    async dispatch<T>(cb: (() => T) | (() => Promise<T>)): Promise<T> {
+        await this.acquire();
+        try {
+            return await Promise.resolve(cb());
+        } finally {
+            this.release({ force: true });
         }
     }
 }
