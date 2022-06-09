@@ -15,6 +15,6 @@ export function getFileType(file: $File) {
 
 export const BASE_CONFIG: Config = {
     name: "filesys",
-    backend: "IndexedDB",
+    adapter: "IndexedDB",
     root: '/'
 };

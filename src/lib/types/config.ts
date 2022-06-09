@@ -1,5 +1,5 @@
 export interface Config {
     name?: string;
-    backend: "InMemory" | "IndexedDB";
+    adapter: "InMemory" | "IndexedDB";
     root: string;
 }

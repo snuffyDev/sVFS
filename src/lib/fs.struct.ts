@@ -1,102 +1,30 @@
 import type { Config } from "./types/config";
-import type { $FS, FileEntry } from "./types/core";
-import { Mutex } from "./utils/mutex";
-import { WritableStore } from "./utils/stores";
-import { setImmediate } from "./utils/setImmediate";
-import { getFileType } from "./constants";
-import { LRUCache } from "./utils/cache";
+import type { $File, FileEntry, FolderEntry } from "./types/core";
+import { BaseAdapter } from "./adapters";
+import type { FSMethods } from "./types/structs";
+import type { Maybe } from "./types/util";
 
-
-export class InternalFS {
-    private $config: Config;
-    private $lock = new Mutex();
-    private $root: $FS;
-    private _size: WritableStore<number>;
-    private constructor(config: Config) {
-        this.$root = new Map() as $FS;
-        this.$config = config;
-        this._size = new WritableStore(this.$root.size);
+export class FS implements FSMethods {
+    private _adapter: BaseAdapter;
+    constructor(private config: Config) {
+        this._adapter = new BaseAdapter(config);
     }
-
-    public get config() {
-        return this.$config;
+    readFile(path: string, options?: { encoding?: null | undefined; } | null | undefined): Promise<Maybe<void | FileEntry<$File> | FolderEntry> | ReferenceError> {
+        return this._adapter.readFile(path, options);
     }
-    public get fs() {
-        return this.$root;
+    writeFile(file: string, data: $File, is_dir?: boolean | undefined): Promise<void | Error> {
+        return this._adapter.writeFile(file, data, is_dir);
     }
-    public get mutex() {
-        return this.$lock;
+    readRoot(): Promise<void | FileEntry<$File>[] | FolderEntry[]> {
+        return this._adapter.readRoot();
     }
-    public get size() {
-        return this._size;
+    mkdir(path: string, contents?: (FileEntry<$File> | FolderEntry)[] | undefined): Promise<void> {
+        return this._adapter.mkdir(path, contents);
     }
-    public static create(config: Config) {
-        return new InternalFS(config);
+    rm(path: string): Promise<void | FileEntry<$File> | FolderEntry | ReferenceError> {
+        return this._adapter.rm(path);
     }
-    /** @internal */
-    async add<T extends string | ArrayBuffer | File | Blob>(name: string, data: T) {
-        return await this.$lock.do(async () => {
-            try {
-                const entry: FileEntry = { name, data, file_type: getFileType(data) };
-                LRUCache.set(entry);
-                this.$root.set(name, entry);
-                setImmediate(() => this._size.set(this.$root.size));
-                return Promise.resolve({ status: 'OK' });
-            } catch (err) {
-                return Promise.reject(err);
-            }
-        });
-    }
-
-    /** @internal */
-    async get<T extends string | ArrayBuffer | File | Blob = string | ArrayBuffer | File | Blob>(path: string): Promise<FileEntry<T> | ReferenceError> {
-        return await this.$lock.do(async () => {
-            try {
-                const checkIfCached = LRUCache.get(path);
-                if (checkIfCached) return checkIfCached;
-                const file = this.$root.get(path);
-                if (!file) throw new ReferenceError(`Path \`${path}\` does not exist.`);
-                return file as FileEntry<T>;
-            } catch (err) {
-                console.error(err);
-                return err as ReferenceError;
-            }
-        });
-    }
-    async getAll<T extends string | ArrayBuffer | File | Blob = string | ArrayBuffer | File | Blob>(): Promise<FileEntry<T>[]> {
-        return await this.$lock.do(async () => {
-            try {
-                const entries = [...this.$root.values()];
-
-                return entries as FileEntry<T>[];
-            } catch (err) {
-                console.error(err);
-                return [];
-            }
-        });
-    }
-    /** @internal */
-    async has(path: string): Promise<boolean> {
-        return await this.$lock.do(async () => {
-            const hasFile = this.$root.has(path);
-            return hasFile;
-        });
-    }
-
-    /** @internal */
-    async delete<T extends string | ArrayBuffer | File | Blob = string | ArrayBuffer | File | Blob>(path: string): Promise<FileEntry<T> | ReferenceError> {
-        return await this.$lock.do(async () => {
-            try {
-
-                const file = this.$root.get(path);
-                if (!file) throw new ReferenceError(`Path \`${path}\` does not exist.`);
-                this.$root.delete(path);
-                setImmediate(() => this._size.set(this.$root.size));
-                return file as FileEntry<T>;
-            } catch (error) {
-                console.error(error);
-                return error as ReferenceError;
-            }
-        });
+    exists(path: string): Promise<boolean> {
+        return this._adapter.exists(path);
     }
 }

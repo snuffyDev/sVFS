@@ -9,19 +9,17 @@
 	import Sidebar from './_components/Sidebar.svelte';
 	import { fs, store } from './_extern';
 
-	// const fs = InternalFS.create({ name: 'cooldude', sep: 'Unix' });
-
 	async function start() {
 		if (!browser) return;
 		timeStart = performance.now();
 		const arr = Array(100)
 			.fill(false)
-			.forEach((_, idx) =>
+			.forEach((_, idx) => {
 				fs.writeFile(
 					crypto.randomUUID(),
 					idx % 2 ? `index: ${idx}` : new Blob([`index: ${idx}`], { type: 'text/plain' })
-				)
-			);
+				);
+			});
 
 		timeEnd = performance.now();
 		time = timeEnd - timeStart;
@@ -55,7 +53,10 @@
 		const blobF = await fs.writeFile('/blob', blob);
 		const bufferF = await fs.writeFile('/buffer', buffer);
 		const textF = await fs.writeFile('/text', text);
-		forEach(['/blob', '/json', '/buffer', '/text'], async (name) => await fs.readFile(name));
+		forEach(['/blob', '/json', '/buffer', '/text'], (name) => {
+			console.log(name, fs.mkdir(name));
+			console.log(fs.readFile(name));
+		});
 		readEnd = performance.now();
 		read = readEnd - readStart;
 		console.timeEnd('testing');
