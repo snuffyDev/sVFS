@@ -35,8 +35,11 @@ export class BaseAdapter implements FSMethods {
     writeFile(file: string, data: $File, is_dir?: boolean | undefined): Promise<void | Error> {
         return this.root.writeFile(file, data, is_dir);
     }
+    testing() {
+        return this.root.testing();
+    }
     readRoot(): Promise<void | FileEntry<$File>[] | FolderEntry[]> {
-        return this.root.readRoot();
+        return this.root.readRoot(() => { });
     }
     mkdir(path: string, contents?: (FileEntry<$File> | FolderEntry)[] | undefined): Promise<void> {
         return this.root.mkdir(path, contents);

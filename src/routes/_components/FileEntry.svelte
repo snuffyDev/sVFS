@@ -35,6 +35,8 @@
 		transition: background 300ms cubic-bezier(0.23, 1, 0.32, 1);
 		cursor: pointer;
 		user-select: none;
+
+		contain: content;
 		&:hover {
 			background: #3a3a3a70;
 		}

@@ -27,8 +27,9 @@ class FileCache {
             this._.delete(file_name);
             this._.set(file_name, entry);
 
+            return entry;
         }
-        return entry;
+        return undefined;
     }
 }
 

@@ -1,28 +1,48 @@
 <script lang="ts">
-	import type { FileEntry } from '$lib/types/core';
-	import { createEventDispatcher } from 'svelte';
+	import { browser } from "$app/env";
 
-	import { fs } from './../_extern';
-	import File from './FileEntry.svelte';
-	const { sizeObservable } = fs;
-	let files: FileEntry[] = [];
-	async function read() {
-		const root = await fs.readRoot();
-		files = [...root];
-		files = files;
-	}
-	$: $sizeObservable && read();
+	import type { FileEntry } from "$lib/types/core";
+	import { globalChannel } from "$lib/vfs";
+	import { createEventDispatcher } from "svelte";
+
+	import { fs } from "./../_extern";
+	import File from "./FileEntry.svelte";
 	const dispatch = createEventDispatcher();
 
-	console.log($sizeObservable, files);
+	let files: FileEntry[] = [];
+	function setFiles(data) {
+		files.push(data);
+		files = data;
+	}
+	async function read() {
+		if (!browser) return;
+		// /** console.log(e); */
+		const test = await fs.readRoot();
+		// console.log(test);
+		if (Array.isArray(test)) files = test;
+		const testSub = await fs.readFile("/subdir");
+
+		// console.log(testSub);
+		dispatch("hasSubdir", { testSub });
+	}
+	globalChannel.on("update:write", async () => await read());
+	let showFiles = false;
+	// $: /** console.log(files); */
 </script>
 
 <aside>
-	<ul>
-		{#each files as file}
-			<File on:click={() => dispatch('active', { file })} {file} />
-		{/each}
-	</ul>
+	<button
+		on:click={() => {
+			showFiles = !showFiles;
+		}}>{showFiles ? `Hide` : `Show`} Files</button
+	>
+	{#if showFiles}
+		<ul>
+			{#each files as file}
+				<File on:click={() => dispatch("active", { file })} {file} />
+			{/each}
+		</ul>
+	{/if}
 </aside>
 
 <style lang="scss">
@@ -40,9 +60,12 @@
 		gap: 0em;
 		min-height: inherit;
 		overflow-y: auto;
+
+		contain: content;
 	}
 	aside {
 		overflow-y: scroll;
-		min-height: 100vh;
+		// position: absolute;
+		contain: content;
 	}
 </style>

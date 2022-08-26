@@ -1,3 +1,4 @@
+import { IndexedDB } from "./adapters";
 import type { Config } from "./types/config";
 import type { $File } from "./types/core";
 
@@ -15,6 +16,6 @@ export function getFileType(file: $File) {
 
 export const BASE_CONFIG: Config = {
     name: "filesys",
-    adapter: "IndexedDB",
-    root: '/'
+    root: '/',
+    adapter: IndexedDB.create({ name: 'filesys', root: '/', emitUpdates: false })
 };

@@ -12,7 +12,7 @@ if (!import.meta.env.SSR) {
             event.preventDefault();
             for (const [id, task] of tasksToDo.entries()) {
                 // alert("testing");
-                console.log(id);
+                /** console.log(id); */
                 forEach(task, (cb) => cb());
             }
             tasksToDo.clear();
@@ -32,7 +32,7 @@ export function doOnUnload<T>(id: string, ...task: Callback<T>[]): void {
     }
     tasksToDo.set(id, taskQueue);
     if (hasBeenInitialized) {
-        console.log("already initialized!");
+        /** console.log("already initialized!"); */
         return;
     }
 }

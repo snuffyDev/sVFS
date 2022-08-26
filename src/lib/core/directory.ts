@@ -1,0 +1,3 @@
+class DirEnt {
+    private constructor() { }
+}
